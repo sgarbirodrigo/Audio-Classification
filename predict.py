@@ -11,8 +11,8 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def make_prediction(args):
 
+def make_prediction(args):
     model = load_model(args.model_fn,
         custom_objects={'Melspectrogram':Melspectrogram,
                         'Normalization2D':Normalization2D})
@@ -43,22 +43,24 @@ def make_prediction(args):
         X_batch = np.array(batch, dtype=np.float32)
         y_pred = model.predict(X_batch)
         y_mean = np.mean(y_pred, axis=0)
+        print("y_mean", y_mean)
+        print("y_pred",y_pred)
         y_pred = np.argmax(y_mean)
-        real_class = os.path.dirname(wav_fn).split('/')[-1]
-        print('Actual class: {}, Predicted class: {}'.format(real_class, classes[y_pred]))
-        results.append(y_mean)
+        print("wav_fn: ",wav_fn,"classes: ",classes,"y_pred:", y_pred)
+        #real_class = os.path.dirname(wav_fn).split('/')[-1]
+        #print('Actual class: {}, Predicted class: {}'.format(real_class, classes[y_pred]))
+        #results.append(y_mean)
 
     np.save(os.path.join('logs', args.pred_fn), np.array(results))
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Audio Classification Training')
     parser.add_argument('--model_fn', type=str, default='models/lstm.h5',
                         help='model file to make predictions')
     parser.add_argument('--pred_fn', type=str, default='y_pred',
                         help='fn to write predictions in logs dir')
-    parser.add_argument('--src_dir', type=str, default='wavfiles',
+    parser.add_argument('--src_dir', type=str, default='wavtests',
                         help='directory containing wavfiles to predict')
     parser.add_argument('--dt', type=float, default=1.0,
                         help='time in seconds to sample audio')

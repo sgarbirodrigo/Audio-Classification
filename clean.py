@@ -107,7 +107,6 @@ def test_threshold(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Cleaning audio data')
     parser.add_argument('--src_root', type=str, default='wavfiles',
                         help='directory of audio files in total duration')
@@ -117,12 +116,12 @@ if __name__ == '__main__':
                         help='time in seconds to sample audio')
     parser.add_argument('--sr', type=int, default=16000,
                         help='rate to downsample audio')
-
-    parser.add_argument('--fn', type=str, default='3a3d0279',
+    parser.add_argument('--fn', type=str, default='6__10_07_13_marDeCangas_Entra16',
                         help='file to plot over time to check magnitude')
     parser.add_argument('--threshold', type=str, default=20,
                         help='threshold magnitude for np.int16 dtype')
     args, _ = parser.parse_known_args()
 
-    test_threshold(args)
-    #split_wavs(args)
+    #test_threshold(args)
+    split_wavs(args)
+    #test_threshold(args)

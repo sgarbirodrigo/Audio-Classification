@@ -104,7 +104,6 @@ def train(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Audio Classification Training')
     parser.add_argument('--model_type', type=str, default='lstm',
                         help='model to run. i.e. conv1d, conv2d, lstm')
