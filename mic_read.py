@@ -6,19 +6,16 @@ spectrogram visualization tool
 Dependencies: pyaudio, numpy and matplotlib
 """
 ############### Import Libraries ###############
-import argparse
-
 import pyaudio
 import numpy as np
 import matplotlib.pyplot as plt
 
 ############### Constants ###############
 #RATE = 44100 #sample rate
-
-RATE = 16000
+RATE = 44000
 FORMAT = pyaudio.paInt16 #conversion format for PyAudio stream
 CHANNELS = 1 #microphone audio channels
-CHUNK_SIZE = 8000 #number of samples to take per read
+CHUNK_SIZE = 16000 #number of samples to take per read
 SAMPLE_LENGTH = int(CHUNK_SIZE*1000/RATE) #length of each sample in ms
 
 ############### Functions ###############
@@ -45,8 +42,7 @@ outputs: int16 data array
 """
 def get_data(stream,pa):
     input_data = stream.read(CHUNK_SIZE)
-    data = np.fromstring(input_data,np.float32)
-
+    data = np.fromstring(input_data,np.int16)
     return data
 
 ############### Test Functions ###############
