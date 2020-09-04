@@ -16,8 +16,8 @@ RATE = 44000
 FORMAT = pyaudio.paInt16 #conversion format for PyAudio stream
 CHANNELS = 1 #microphone audio channels
 CHUNK_SIZE = 16000 #number of samples to take per read
-SAMPLE_LENGTH = int(CHUNK_SIZE*1000/RATE) #length of each sample in ms
-
+SAMPLE_LENGTH = 1000 #int(CHUNK_SIZE*1000/RATE) #length of each sample in ms
+print(SAMPLE_LENGTH)
 ############### Functions ###############
 """
 open_mic:
@@ -52,7 +52,7 @@ creates a 10kHz test tone
 """
 def make_10k():
     x = np.linspace(-2*np.pi,2*np.pi,21000)
-    x = np.tile(x,int(SAMPLE_LENGTH/(4*np.pi)))
+    x = np.tile(x,int( SAMPLE_LENGTH/(4*np.pi)))
     y = np.sin(2*np.pi*5000*x)
     return x,y
 
