@@ -1,3 +1,5 @@
+import pickle
+
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 import argparse
@@ -6,13 +8,15 @@ from glob import glob
 import numpy as np
 import pandas as pd
 from librosa.core import resample, to_mono
-from tqdm import tqdm
+import tqdm
+
+from generalTools import save_dict, load_dict
 
 
 def envelope(y, rate, threshold):
     mask = []
     y = pd.Series(y).apply(np.abs)
-    y_mean = y.rolling(window=int(rate/20),
+    y_mean = y.rolling(window=int(rate / 20),
                        min_periods=1,
                        center=True).max()
     for mean in y_mean:
@@ -24,6 +28,7 @@ def envelope(y, rate, threshold):
 
 
 def downsample_mono(path, sr):
+    # print("path",path)
     rate, wav = wavfile.read(path)
     wav = wav.astype(np.float32, order='F')
     try:
@@ -38,7 +43,7 @@ def downsample_mono(path, sr):
 
 def save_sample(sample, rate, target_dir, fn, ix):
     fn = fn.split('.wav')[0]
-    dst_path = os.path.join(target_dir.split('.')[0], fn+'_{}.wav'.format(str(ix)))
+    dst_path = os.path.join(target_dir.split('.')[0], fn + '_{}.wav'.format(str(ix)))
     if os.path.exists(dst_path):
         return
     wavfile.write(dst_path, rate, sample)
@@ -49,42 +54,57 @@ def check_dir(path):
         os.mkdir(path)
 
 
+
 def split_wavs(args):
     src_root = args.src_root
     dst_root = args.dst_root
     dt = args.delta_time
-
     wav_paths = glob('{}/**'.format(src_root), recursive=True)
+
     wav_paths = [x for x in wav_paths if '.wav' in x]
+
     dirs = os.listdir(src_root)
     check_dir(dst_root)
     classes = os.listdir(src_root)
-    for _cls in classes:
-        target_dir = os.path.join(dst_root, _cls)
-        check_dir(target_dir)
-        src_dir = os.path.join(src_root, _cls)
-        for fn in tqdm(os.listdir(src_dir)):
-            src_fn = os.path.join(src_dir, fn)
-            rate, wav = downsample_mono(src_fn, args.sr)
-            mask, y_mean = envelope(wav, rate, threshold=args.threshold)
-            wav = wav[mask]
-            delta_sample = int(dt*rate)
 
-            # cleaned audio is less than a single sample
-            # pad with zeros to delta_sample size
-            if wav.shape[0] < delta_sample:
-                sample = np.zeros(shape=(delta_sample,), dtype=np.int16)
-                sample[:wav.shape[0]] = wav
-                save_sample(sample, rate, target_dir, fn, 0)
-            # step through audio and save every delta_sample
-            # discard the ending audio if it is too short
-            else:
-                trunc = wav.shape[0] % delta_sample
-                for cnt, i in enumerate(np.arange(0, wav.shape[0]-trunc, delta_sample)):
-                    start = int(i)
-                    stop = int(i + delta_sample)
-                    sample = wav[start:stop]
-                    save_sample(sample, rate, target_dir, fn, cnt)
+    clean_classes = []
+    for xclass in classes:
+        if xclass.find("._") == -1:
+            clean_classes.append(xclass)
+
+    classes = clean_classes
+
+    for _cls in classes:
+        if (_cls[0] != "."):
+            # print("class:",_cls)
+            target_dir = os.path.join(dst_root, _cls)
+            check_dir(target_dir)
+            src_dir = os.path.join(src_root, _cls)
+
+            for fn in tqdm.gui.tqdm(os.listdir(src_dir), gui=True):
+                if (fn[0] != "."):
+                    src_fn = os.path.join(src_dir, fn)
+                    # print("src_fn:",src_fn,"src_dir:",src_dir,"fn:",fn)
+                    rate, wav = downsample_mono(src_fn, args.sr)
+                    mask, y_mean = envelope(wav, rate, threshold=args.threshold)
+                    wav = wav[mask]
+                    delta_sample = int(dt * rate)
+
+                    # cleaned audio is less than a single sample
+                    # pad with zeros to delta_sample size
+                    if wav.shape[0] < delta_sample:
+                        sample = np.zeros(shape=(delta_sample,), dtype=np.int16)
+                        sample[:wav.shape[0]] = wav
+                        save_sample(sample, rate, target_dir, fn, 0)
+                    # step through audio and save every delta_sample
+                    # discard the ending audio if it is too short
+                    else:
+                        trunc = wav.shape[0] % delta_sample
+                        for cnt, i in enumerate(np.arange(0, wav.shape[0] - trunc, delta_sample)):
+                            start = int(i)
+                            stop = int(i + delta_sample)
+                            sample = wav[start:stop]
+                            save_sample(sample, rate, target_dir, fn, cnt)
 
 
 def test_threshold(args):
@@ -122,6 +142,6 @@ if __name__ == '__main__':
                         help='threshold magnitude for np.int16 dtype')
     args, _ = parser.parse_known_args()
 
-    #test_threshold(args)
+    # test_threshold(args)
     split_wavs(args)
-    #test_threshold(args)
+    # test_threshold(args)

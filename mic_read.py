@@ -17,7 +17,6 @@ FORMAT = pyaudio.paInt16 #conversion format for PyAudio stream
 CHANNELS = 1 #microphone audio channels
 CHUNK_SIZE = 16000 #number of samples to take per read
 SAMPLE_LENGTH = 1000 #int(CHUNK_SIZE*1000/RATE) #length of each sample in ms
-print(SAMPLE_LENGTH)
 ############### Functions ###############
 """
 open_mic:
@@ -27,6 +26,9 @@ ouputs: stream, PyAudio object
 """
 def open_mic():
     pa = pyaudio.PyAudio()
+    for i in range(pa.get_device_count()):  # list all available audio devices
+        dev = pa.get_device_info_by_index(i)
+        print((i, dev['name'], dev['maxInputChannels']))
     stream = pa.open(format = FORMAT,
                      channels = CHANNELS,
                      rate = RATE,
@@ -41,7 +43,8 @@ inputs: stream, PyAudio object
 outputs: int16 data array
 """
 def get_data(stream,pa):
-    input_data = stream.read(CHUNK_SIZE)
+    input_data = stream.read(CHUNK_SIZE,exception_on_overflow = False)
+    #print("input_data:",input_data)
     data = np.fromstring(input_data,np.int16)
     return data
 
