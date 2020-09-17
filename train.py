@@ -62,12 +62,12 @@ def train(args):
     dt = args.delta_time
     batch_size = args.batch_size
     model_type = args.model_type
-    params = {'N_CLASSES':len(os.listdir(args.src_root)),
-              'SR':sr,
-              'DT':dt}
-    models = {'conv1d':Conv1D(**params),
-              'conv2d':Conv2D(**params),
-              'lstm':  LSTM(**params)}
+    params = {'N_CLASSES': len(os.listdir(args.src_root)),
+              'SR': sr,
+              'DT': dt}
+    models = {'conv1d': Conv1D(**params),
+              'conv2d': Conv2D(**params),
+              'lstm': LSTM(**params)}
     assert model_type in models.keys(), '{} not an available model'.format(model_type)
     csv_path = os.path.join('logs', '{}_history.csv'.format(model_type))
 
@@ -85,9 +85,11 @@ def train(args):
 
     assert len(label_train) >= args.batch_size, 'Number of train samples must be >= batch_size'
     if len(set(label_train)) != params['N_CLASSES']:
-        warnings.warn('Found {}/{} classes in training data. Increase data size or change random_state.'.format(len(set(label_train)), params['N_CLASSES']))
+        warnings.warn('Found {}/{} classes in training data. Increase data size or change random_state.'.format(
+            len(set(label_train)), params['N_CLASSES']))
     if len(set(label_val)) != params['N_CLASSES']:
-        warnings.warn('Found {}/{} classes in validation data. Increase data size or change random_state.'.format(len(set(label_val)), params['N_CLASSES']))
+        warnings.warn('Found {}/{} classes in validation data. Increase data size or change random_state.'.format(
+            len(set(label_val)), params['N_CLASSES']))
 
     tg = DataGenerator(wav_train, label_train, sr, dt,
                        params['N_CLASSES'], batch_size=batch_size)
@@ -107,7 +109,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Training')
     parser.add_argument('--model_type', type=str, default='lstm',
                         help='model to run. i.e. conv1d, conv2d, lstm')
-    parser.add_argument('--src_root', type=str, default='clean',
+    selected_folder = "/Volumes/My Passport/HD externo/1 - Projetos/6 - Sonar/TestDataset"
+    upperDirectory = selected_folder.replace(selected_folder.split("/")[-1], "")
+    parser.add_argument('--src_root', type=str, default="{}/cleaned_dataset".format(upperDirectory),
                         help='directory of audio files in total duration')
     parser.add_argument('--batch_size', type=int, default=16,
                         help='batch size')

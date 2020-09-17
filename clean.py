@@ -73,7 +73,7 @@ def split_wavs(args):
             clean_classes.append(xclass)
 
     classes = clean_classes
-
+    save_dict(classes,"classes")
     for _cls in classes:
         if (_cls[0] != "."):
             # print("class:",_cls)
@@ -81,7 +81,7 @@ def split_wavs(args):
             check_dir(target_dir)
             src_dir = os.path.join(src_root, _cls)
 
-            for fn in tqdm.gui.tqdm(os.listdir(src_dir), gui=True):
+            for fn in tqdm.tqdm(os.listdir(src_dir)):
                 if (fn[0] != "."):
                     src_fn = os.path.join(src_dir, fn)
                     # print("src_fn:",src_fn,"src_dir:",src_dir,"fn:",fn)
@@ -107,6 +107,7 @@ def split_wavs(args):
                             save_sample(sample, rate, target_dir, fn, cnt)
 
 
+
 def test_threshold(args):
     src_root = args.src_root
     wav_paths = glob('{}/**'.format(src_root), recursive=True)
@@ -128,9 +129,13 @@ def test_threshold(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Cleaning audio data')
-    parser.add_argument('--src_root', type=str, default='wavfiles',
+
+    selected_folder = "/Volumes/My Passport/HD externo/1 - Projetos/6 - Sonar/TestDataset"
+    upperDirectory = selected_folder.replace(selected_folder.split("/")[-1], "")
+    parser.add_argument('--src_root', type=str, default=selected_folder,
                         help='directory of audio files in total duration')
-    parser.add_argument('--dst_root', type=str, default='clean',
+
+    parser.add_argument('--dst_root', type=str, default="{}/cleaned_dataset".format(upperDirectory),
                         help='directory to put audio files split by delta_time')
     parser.add_argument('--delta_time', '-dt', type=float, default=1.0,
                         help='time in seconds to sample audio')
@@ -138,7 +143,7 @@ if __name__ == '__main__':
                         help='rate to downsample audio')
     parser.add_argument('--fn', type=str, default='6__10_07_13_marDeCangas_Entra16',
                         help='file to plot over time to check magnitude')
-    parser.add_argument('--threshold', type=str, default=20,
+    parser.add_argument('--threshold', type=str, default=0,
                         help='threshold magnitude for np.int16 dtype')
     args, _ = parser.parse_known_args()
 

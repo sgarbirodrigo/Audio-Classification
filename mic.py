@@ -10,10 +10,14 @@ Dependencies: matplotlib, numpy and the mic_read.py module
 
 ############### Import Libraries ###############
 import asyncio
+import os
+import wave
 import datetime
 import time
-from tkinter.ttk import Progressbar
+from tkinter import simpledialog
+from tkinter.ttk import Progressbar, Style
 
+import pyaudio
 from tensorflow.keras.models import load_model
 from kapre.time_frequency import Melspectrogram
 from kapre.utils import Normalization2D
@@ -36,12 +40,12 @@ import mic_read
 
 ############### Constants ###############
 # SAMPLES_PER_FRAME = 10 #Number of mic reads concatenated within a single window
-from clean import downsample_mono
+from clean import downsample_mono, envelope
 from generalTools import load_dict
 
 SAMPLES_PER_FRAME = 20
-nfft = 1024  # 256#1024 #NFFT value for spectrogram
-overlap = 0  # 512 #overlap value for spectrogram
+nfft = 2048  # 256#1024 #NFFT value for spectrogram
+overlap = 0  # mic_read.CHUNK_SIZE/2 # 512 #overlap value for spectrogram
 rate = mic_read.RATE  # sampling rate
 model = load_model("models/lstm.h5",
                    custom_objects={'Melspectrogram': Melspectrogram,
@@ -89,8 +93,9 @@ outputs: updated image
 async def run_predict(data, n):
     step = mic_read.CHUNK_SIZE
     batch = []
-
     wav = data.astype(np.float32, order='F')
+    #mask, env = envelope(wav, rate, threshold=0)
+    #wav = wav[mask]
     for i in range(0, wav.shape[0], step):
         sample = wav[i:i + step]
         sample = sample.reshape(1, -1)
@@ -99,16 +104,20 @@ async def run_predict(data, n):
             tmp[:, :sample.shape[1]] = sample.flatten()
             sample = tmp
         batch.append(sample)
+
     X_batch = np.array(batch, dtype=np.float32)
     y_pred = model.predict(X_batch)
+    # print("y_pred1:", y_pred)
+    y_pred = np.mean(y_pred, axis=0)
+    # print("y_pred2:", y_pred)
+    # y_pred2 = np.argmax(y_pred, axis=1)
+    # print("y_pred2",y_pred2)
+    for i in range(len(y_pred)):
+        predict_labels[0][i]["text"] = y_pred[i]
+        predict_labels[1][i]["value"] = int(100 * y_pred[i])
 
-    for i in range(len(y_pred[0])):
-        print(predict_labels[0])
-        print(predict_labels[0][i])
-        print(predict_labels[0][i]["text"])
-        print(predict_labels)
-        predict_labels[0][i]["text"] = y_pred[0][i]
-        predict_labels[1][i]["value"] = int(100 * y_pred[0][i])
+    if np.argmax(y_pred) > 0.9:
+        resultLabel["text"] = "Last Prediction: {}".format(classesLabels[int(np.argmax(y_pred))])
 
 
 async def visual(data, n):
@@ -130,11 +139,18 @@ async def visual(data, n):
 
     # Find the CW spectrum peak - look across all time steps
     # f = int(np.argmax(im_data[:]) / shape[1])
+    # plt.gca().axvline(x=n)
 
     return im,
 
 
+frames = []
+
+
 async def process(data, n):
+    if play_pause_btn["text"] == "Stop":
+        frames.append(data)
+
     process_spectogram = asyncio.create_task(visual(data, n))
     process_predict = asyncio.create_task(run_predict(data, n))
 
@@ -153,6 +169,7 @@ def main():
     global pa
     global im
     global fig
+
     ############### Initialize Plot ###############
 
     fig = plt.figure()
@@ -196,6 +213,7 @@ def main():
 
     anim = animation.FuncAnimation(fig, update_fig, blit=False,
                                    interval=mic_read.CHUNK_SIZE / 1000, cache_frame_data=True)
+
     try:
         root.mainloop()
     except:
@@ -206,6 +224,52 @@ def main():
     stream.close()
     pa.terminate()
     print("Program Terminated")
+
+
+class popupWindow(object):
+    def __init__(self, master):
+        top = self.top = Toplevel(master)
+        self.l = Label(top, text="Set Audio Classification")
+        self.l.pack()
+        self.e = Entry(top)
+        self.e.pack()
+        self.b = Button(top, text='Save', command=self.cleanup)
+        self.b.pack()
+
+    def cleanup(self):
+        self.value = self.e.get()
+        self.top.destroy()
+
+
+import random, string
+
+
+def randomword(length):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(length))
+
+
+def play_pause():
+    if (play_pause_btn["text"] == "Stop"):
+        play_pause_btn["text"] = "Record"
+        category = simpledialog.askstring(title="Category",
+                                          prompt="Insert the Classification:")
+        random_name = randomword(12)
+        root_directory = "/Volumes/My Passport/HD externo/1 - Projetos/6 - Sonar/TestDataset"
+        path ='{}/{}'.format(root_directory, category)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        wf = wave.open("{}/{}/{}.wav".format(root_directory, category, random_name), 'wb')
+        wf.setnchannels(1)
+        p = pyaudio.PyAudio()
+        wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
+        wf.setframerate(mic_read.RATE)
+        wf.writeframes(b''.join(frames))
+        wf.close()
+        frames.clear()
+    else:
+        play_pause_btn["text"] = "Stop"
+    print("click")
 
 
 if __name__ == "__main__":
@@ -233,20 +297,31 @@ if __name__ == "__main__":
     bottom_bar = Frame(leftPanel, bg="blue")
     bottom_bar.grid(row=2, sticky="nsew")
 
+    play_pause_btn = Button(bottom_bar, text="Record", command=play_pause)
+    play_pause_btn.grid(row=0, column=0, sticky="nsew")
+
     rightPanel = Frame(coluna2, bg="grey")
-    #rightPanel.pack(fill=BOTH, expand=True)
-    rightPanel.pack(fill=BOTH)
+    rightPanel.pack(fill=BOTH, expand=True)
+    # rightPanel.pack(fill=BOTH)
 
     classesLabels = load_dict("classes")
-    predict_labels = [[],[]]
+    predict_labels = [[], []]
     for i in range(len(classesLabels)):
-        Label(rightPanel, text=classesLabels[i], width=20).grid(column=0, row=i, sticky="nsew")
-        label = Label(rightPanel, text="0.0", width=20)
+        Label(rightPanel, text="{}:".format(classesLabels[i]), width=20, anchor=W, justify=LEFT).grid(column=0, row=i,
+                                                                                                      sticky="nsew")
+        label = Label(rightPanel, text="0.0", width=20, anchor=W, justify=LEFT)
         label.grid(column=1, row=i, sticky="nsew")
         predict_labels[0].append(label)
-        progressBar = Progressbar(rightPanel, orient=HORIZONTAL, length=100, mode='determinate', value=0)
+        s = Style()
+        s.theme_use("classic")
+        s.configure("red.Horizontal.TProgressbar", background='green')
+        progressBar = Progressbar(rightPanel, orient=HORIZONTAL, style="red.Horizontal.TProgressbar", length=100,
+                                  mode='determinate', value=0)
         progressBar.grid(column=2, row=i, sticky="nsew")
         predict_labels[1].append(progressBar)
+
+    resultLabel = Label(rightPanel, text="Nothing Heard", width=20, anchor=W, justify=CENTER)
+    resultLabel.grid(column=0, row=len(classesLabels) + 1, sticky="nsew")
 
     """classes = Frame(rightPanel, bg="yellow")
     classes.grid(row=0, column=0, sticky="nsew")
