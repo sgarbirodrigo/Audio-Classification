@@ -10,6 +10,8 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
+from generalTools import load_dict, save_dict
+
 
 def make_prediction(args):
     model = load_model(args.model_fn,
@@ -18,14 +20,17 @@ def make_prediction(args):
 
     wav_paths = glob('{}/**'.format(args.src_dir), recursive=True)
     wav_paths = sorted([x.replace(os.sep, '/') for x in wav_paths if '.wav' in x])
-    classes = sorted(os.listdir(args.src_dir))
+    # classes = sorted(os.listdir(args.src_dir))
+    classes = sorted(load_dict("classes"))
     labels = [os.path.split(x)[0].split('/')[-1] for x in wav_paths]
     le = LabelEncoder()
     y_true = le.fit_transform(labels)
-    print("y_true",labels)
+    # print("Real labels",labels)
     results = []
     countPrecisionOK = 0
     countPrecisionTotal = 0
+    total_by_specie = {}
+    correct_by_specie = {}
 
     for z, wav_fn in tqdm(enumerate(wav_paths), total=len(wav_paths)):
         rate, wav = downsample_mono(wav_fn, args.sr)
@@ -42,20 +47,37 @@ def make_prediction(args):
                 sample = tmp
             batch.append(sample)
         X_batch = np.array(batch, dtype=np.float32)
+        # try:
+        y_pred = model.predict(X_batch)
+        y_mean = np.mean(y_pred, axis=0)
+        y_pred = np.argmax(y_mean)
+        real_class = os.path.dirname(wav_fn).split('/')[-1]
+        #print('Actual class: {}, Predicted class: {}'.format(real_class, classes[y_pred]))
         try:
-            y_pred = model.predict(X_batch)
-            y_mean = np.mean(y_pred, axis=0)
-            y_pred = np.argmax(y_mean)
-            real_class = os.path.dirname(wav_fn).split('/')[-1]
-            print('Actual class: {}, Predicted class: {}'.format(real_class, classes[y_pred]))
-            if real_class == classes[y_pred]:
-                countPrecisionOK += 1
-            countPrecisionTotal += 1
-            results.append(y_mean)
+            old_total = int(total_by_specie.get(real_class))
         except:
-            print("deu ruim")
+            old_total = 0
+        total_by_specie[real_class] = 1 + old_total
+        if real_class == classes[y_pred]:
+            try:
+                old_correct = int(correct_by_specie[real_class])
+            except:
+                old_correct = 0
+            correct_by_specie[real_class] = 1 + old_correct
+        if real_class == classes[y_pred]:
+            countPrecisionOK += 1
+        countPrecisionTotal += 1
+        results.append(y_mean)
+        # except:
+        #    print("deu ruim")
+    save_dict(correct_by_specie,"correct_specie")
+    save_dict(total_by_specie,"total_specie")
+    print("correct: ",correct_by_specie)
+    print("total: ",total_by_specie)
+    for specie in total_by_specie:
+        print(specie,correct_by_specie[specie],total_by_specie[specie],correct_by_specie[specie]/total_by_specie[specie])
 
-    print("Precision:",countPrecisionOK,countPrecisionTotal,countPrecisionOK/countPrecisionTotal)
+    print("Precision:", countPrecisionOK, countPrecisionTotal, countPrecisionOK / countPrecisionTotal)
     np.save(os.path.join('logs', args.pred_fn), np.array(results))
 
 

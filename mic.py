@@ -17,6 +17,7 @@ import time
 from tkinter import simpledialog
 from tkinter.ttk import Progressbar, Style
 
+import librosa
 import pyaudio
 from tensorflow.keras.models import load_model
 from kapre.time_frequency import Melspectrogram
@@ -43,14 +44,18 @@ import mic_read
 from clean import downsample_mono, envelope
 from generalTools import load_dict
 
-SAMPLES_PER_FRAME = 20
+SAMPLES_PER_FRAME =40
 nfft = 2048  # 256#1024 #NFFT value for spectrogram
-overlap = 0  # mic_read.CHUNK_SIZE/2 # 512 #overlap value for spectrogram
+overlap = 0 # 512 #overlap value for spectrogram
 rate = mic_read.RATE  # sampling rate
 model = load_model("models/lstm.h5",
                    custom_objects={'Melspectrogram': Melspectrogram,
                                    'Normalization2D': Normalization2D})
-
+print("parameters:")
+print("rate",mic_read.RATE)
+#print("chunnk",mic_read.CHUNK_SIZE)
+print("nftt",nfft)
+print("sample_lengh",mic_read.SAMPLE_LENGTH)
 root = Tk()
 ############### Functions ###############
 """
@@ -75,8 +80,16 @@ see matplotlib.mlab.specgram documentation for help
 """
 
 
-def get_specgram(signal, rate):
-    arr2D, freqs, bins = specgram(signal, Fs=rate, NFFT=nfft, mode='psd')
+def get_specgram(data, rate):
+    wav = data.astype(np.float32, order='F')
+    mask, env = envelope(wav, rate, threshold=100)
+    wav = wav[mask]
+
+
+
+    arr2D, freqs, bins = specgram(wav, Fs=44100, NFFT=nfft, mode='psd',noverlap=128)
+    #mel = librosa.filters.mel(sr=16000, n_fft=2048, n_mels=n_mels)
+
     return arr2D, freqs, bins
 
 
@@ -91,11 +104,11 @@ outputs: updated image
 
 
 async def run_predict(data, n):
-    step = mic_read.CHUNK_SIZE
+    step = 16000
     batch = []
     wav = data.astype(np.float32, order='F')
-    #mask, env = envelope(wav, rate, threshold=0)
-    #wav = wav[mask]
+    mask, env = envelope(wav, rate, threshold=0)
+    wav = wav[mask]
     for i in range(0, wav.shape[0], step):
         sample = wav[i:i + step]
         sample = sample.reshape(1, -1)
@@ -150,6 +163,7 @@ frames = []
 async def process(data, n):
     if play_pause_btn["text"] == "Stop":
         frames.append(data)
+
 
     process_spectogram = asyncio.create_task(visual(data, n))
     process_predict = asyncio.create_task(run_predict(data, n))
@@ -212,7 +226,7 @@ def main():
     cbar.set_label('Frequency Power (dB)')
 
     anim = animation.FuncAnimation(fig, update_fig, blit=False,
-                                   interval=mic_read.CHUNK_SIZE / 1000, cache_frame_data=True)
+                                   interval=1, cache_frame_data=True)
 
     try:
         root.mainloop()

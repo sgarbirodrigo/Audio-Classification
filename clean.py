@@ -83,28 +83,31 @@ def split_wavs(args):
 
             for fn in tqdm.tqdm(os.listdir(src_dir)):
                 if (fn[0] != "."):
-                    src_fn = os.path.join(src_dir, fn)
-                    # print("src_fn:",src_fn,"src_dir:",src_dir,"fn:",fn)
-                    rate, wav = downsample_mono(src_fn, args.sr)
-                    mask, y_mean = envelope(wav, rate, threshold=args.threshold)
-                    wav = wav[mask]
-                    delta_sample = int(dt * rate)
+                    try:
+                        src_fn = os.path.join(src_dir, fn)
+                        # print("src_fn:",src_fn,"src_dir:",src_dir,"fn:",fn)
+                        rate, wav = downsample_mono(src_fn, args.sr)
+                        mask, y_mean = envelope(wav, rate, threshold=args.threshold)
+                        wav = wav[mask]
+                        delta_sample = int(dt * rate)
 
-                    # cleaned audio is less than a single sample
-                    # pad with zeros to delta_sample size
-                    if wav.shape[0] < delta_sample:
-                        sample = np.zeros(shape=(delta_sample,), dtype=np.int16)
-                        sample[:wav.shape[0]] = wav
-                        save_sample(sample, rate, target_dir, fn, 0)
-                    # step through audio and save every delta_sample
-                    # discard the ending audio if it is too short
-                    else:
-                        trunc = wav.shape[0] % delta_sample
-                        for cnt, i in enumerate(np.arange(0, wav.shape[0] - trunc, delta_sample)):
-                            start = int(i)
-                            stop = int(i + delta_sample)
-                            sample = wav[start:stop]
-                            save_sample(sample, rate, target_dir, fn, cnt)
+                        # cleaned audio is less than a single sample
+                        # pad with zeros to delta_sample size
+                        if wav.shape[0] < delta_sample:
+                            sample = np.zeros(shape=(delta_sample,), dtype=np.int16)
+                            sample[:wav.shape[0]] = wav
+                            save_sample(sample, rate, target_dir, fn, 0)
+                        # step through audio and save every delta_sample
+                        # discard the ending audio if it is too short
+                        else:
+                            trunc = wav.shape[0] % delta_sample
+                            for cnt, i in enumerate(np.arange(0, wav.shape[0] - trunc, delta_sample)):
+                                start = int(i)
+                                stop = int(i + delta_sample)
+                                sample = wav[start:stop]
+                                save_sample(sample, rate, target_dir, fn, cnt)
+                    except:
+                        print("fail",fn)
 
 
 

@@ -12,11 +12,11 @@ import matplotlib.pyplot as plt
 
 ############### Constants ###############
 # RATE = 44100 #sample rate
-RATE = 44000
+RATE = 44100
 FORMAT = pyaudio.paInt16  # conversion format for PyAudio stream
 CHANNELS = 1  # microphone audio channels
-CHUNK_SIZE = 16000  # number of samples to take per read
-SAMPLE_LENGTH = 1000  # int(CHUNK_SIZE*1000/RATE) #length of each sample in ms
+SAMPLE_LENGTH = 100 #length of each sample in ms
+#CHUNK_SIZE = 1024  # number of samples to take per read
 ############### Functions ###############
 
 """
@@ -32,11 +32,12 @@ def open_mic():
     for i in range(pa.get_device_count()):  # list all available audio devices
         dev = pa.get_device_info_by_index(i)
         print((i, dev['name'], dev['maxInputChannels']))
+
     stream = pa.open(format=FORMAT,
                      channels=CHANNELS,
                      rate=RATE,
                      input=True,
-                     frames_per_buffer=CHUNK_SIZE)
+                     frames_per_buffer=1024)
     return stream, pa
 
 
@@ -49,8 +50,8 @@ outputs: int16 data array
 
 
 def get_data(stream, pa):
-    input_data = stream.read(CHUNK_SIZE, exception_on_overflow=False)
-    # print("input_data:",input_data)
+    input_data = stream.read(int(RATE/10), exception_on_overflow=False)
+    print(len(input_data))
     data = np.fromstring(input_data, np.int16)
     return data
 
@@ -60,7 +61,6 @@ def get_data(stream, pa):
 make_10k:
 creates a 10kHz test tone
 """
-
 
 def make_10k():
     x = np.linspace(-2 * np.pi, 2 * np.pi, 21000)
@@ -73,7 +73,6 @@ def make_10k():
 show_freq:
 plots the test tone for a sanity check
 """
-
 
 def show_freq():
     x, y = make_10k()
