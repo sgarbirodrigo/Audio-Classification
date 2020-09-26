@@ -44,10 +44,11 @@ import mic_read
 from clean import downsample_mono, envelope
 from generalTools import load_dict
 
-SAMPLES_PER_FRAME =40
-nfft = 2048  # 256#1024 #NFFT value for spectrogram
-overlap = 0 # 512 #overlap value for spectrogram
-rate = mic_read.RATE  # sampling rate
+SAMPLES_PER_FRAME = 20
+nfft = 4096#256#1024 #NFFT value for spectrogram
+overlap = 2048#512 #overlap value for spectrogram
+rate = mic_read.RATE #sampling rate
+
 model = load_model("models/lstm.h5",
                    custom_objects={'Melspectrogram': Melspectrogram,
                                    'Normalization2D': Normalization2D})
@@ -55,7 +56,7 @@ print("parameters:")
 print("rate",mic_read.RATE)
 #print("chunnk",mic_read.CHUNK_SIZE)
 print("nftt",nfft)
-print("sample_lengh",mic_read.SAMPLE_LENGTH)
+#print("sample_lengh",mic_read.SAMPLE_LENGTH)
 root = Tk()
 ############### Functions ###############
 """
@@ -79,15 +80,12 @@ output: 2D Spectrogram Array, Frequency Array, Bin Array
 see matplotlib.mlab.specgram documentation for help
 """
 
-
+#mic_read.make_10k()
 def get_specgram(data, rate):
     wav = data.astype(np.float32, order='F')
-    mask, env = envelope(wav, rate, threshold=100)
-    wav = wav[mask]
-
-
-
-    arr2D, freqs, bins = specgram(wav, Fs=44100, NFFT=nfft, mode='psd',noverlap=128)
+    """mask, env = envelope(wav, rate, threshold=100)
+    wav = wav[mask]"""
+    arr2D, freqs, bins = specgram(wav, Fs=44100, window=window_hanning,NFFT=nfft, mode='psd',noverlap=overlap)
     #mel = librosa.filters.mel(sr=16000, n_fft=2048, n_mels=n_mels)
 
     return arr2D, freqs, bins
@@ -190,6 +188,7 @@ def main():
 
     ############### GUI ########################
 
+
     """
     Launch the stream and the original spectrogram
     """
@@ -197,14 +196,13 @@ def main():
     data = get_sample(stream, pa)
     arr2D, freqs, bins = get_specgram(data, rate)
     # print("first array:",arr2D)
-
     """
     Setup the plot paramters
     """
     extent = (bins[0], bins[-1] * SAMPLES_PER_FRAME, freqs[-1], freqs[0])
     # print(max(freqs),max(bins))
     # arr2D = ndimage.rotate(arr2D,3.14)
-    im = plt.imshow(arr2D, aspect='auto', extent=extent, norm=LogNorm(vmin=1 / pow(10, 10), vmax=pow(10, 8)), )
+    im = plt.imshow(arr2D, aspect='auto', extent=extent, interpolation="none", norm=LogNorm(vmin=1 / pow(10, 10), vmax=pow(10, 8)), )
 
     # im = ndimage.rotate(im,angle=degree*90)
     plt.xlabel('Time (s)')
@@ -222,11 +220,12 @@ def main():
 
     plotcanvas = FigureCanvasTkAgg(fig, middle_bar)
     plotcanvas.get_tk_widget().pack(fill=BOTH, expand=True)
-    cbar = plt.colorbar()
-    cbar.set_label('Frequency Power (dB)')
-
+    #cbar = plt.colorbar()
+    #cbar.set_label('Frequency Power (dB)')
+    interval =mic_read.CHUNK_SIZE/mic_read.CHUNK_SIZE
+    print("interval",interval)
     anim = animation.FuncAnimation(fig, update_fig, blit=False,
-                                   interval=1, cache_frame_data=True)
+                                   interval=interval, cache_frame_data=True)
 
     try:
         root.mainloop()

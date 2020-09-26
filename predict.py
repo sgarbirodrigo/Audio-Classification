@@ -36,6 +36,7 @@ def make_prediction(args):
         rate, wav = downsample_mono(wav_fn, args.sr)
         mask, env = envelope(wav, rate, threshold=args.threshold)
         clean_wav = wav[mask]
+
         step = int(args.sr * args.dt)
         batch = []
         for i in range(0, clean_wav.shape[0], step):
@@ -52,7 +53,7 @@ def make_prediction(args):
         y_mean = np.mean(y_pred, axis=0)
         y_pred = np.argmax(y_mean)
         real_class = os.path.dirname(wav_fn).split('/')[-1]
-        #print('Actual class: {}, Predicted class: {}'.format(real_class, classes[y_pred]))
+        print('{} - Actual class: {}, Predicted class: {}'.format(str(wav_fn).split("/")[-1],real_class, classes[y_pred]))
         try:
             old_total = int(total_by_specie.get(real_class))
         except:
@@ -74,8 +75,8 @@ def make_prediction(args):
     save_dict(total_by_specie,"total_specie")
     print("correct: ",correct_by_specie)
     print("total: ",total_by_specie)
-    for specie in total_by_specie:
-        print(specie,correct_by_specie[specie],total_by_specie[specie],correct_by_specie[specie]/total_by_specie[specie])
+    #for specie in total_by_specie:
+    #    print(specie,correct_by_specie[specie],total_by_specie[specie],correct_by_specie[specie]/total_by_specie[specie])
 
     print("Precision:", countPrecisionOK, countPrecisionTotal, countPrecisionOK / countPrecisionTotal)
     np.save(os.path.join('logs', args.pred_fn), np.array(results))
@@ -87,15 +88,15 @@ if __name__ == '__main__':
                         help='model file to make predictions')
     parser.add_argument('--pred_fn', type=str, default='y_pred',
                         help='fn to write predictions in logs dir')
-    selected_folder = "/Volumes/My Passport/HD externo/1 - Projetos/6 - Sonar/TestDataset"
+    selected_folder = "/Volumes/My Passport/HD externo/1 - Projetos/6 - Sonar/test_predict"
     upperDirectory = selected_folder.replace(selected_folder.split("/")[-1], "")
-    parser.add_argument('--src_dir', type=str, default="{}/cleaned_dataset".format(upperDirectory),
+    parser.add_argument('--src_dir', type=str, default="{}/test_predict".format(upperDirectory),
                         help='directory containing wavfiles to predict')
     parser.add_argument('--dt', type=float, default=1.0,
                         help='time in seconds to sample audio')
     parser.add_argument('--sr', type=int, default=16000,
                         help='sample rate of clean audio')
-    parser.add_argument('--threshold', type=str, default=0,
+    parser.add_argument('--threshold', type=str, default=100,
                         help='threshold magnitude for np.int16 dtype')
     args, _ = parser.parse_known_args()
 
